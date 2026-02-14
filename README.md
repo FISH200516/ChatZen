@@ -124,7 +124,7 @@ ChatZen 集成了广泛的官方和第三方 API 服务：
 
 1.  **克隆项目**:
     ```bash
-    git clone https://github.com/yourusername/ChatZen.git
+    git clone https://github.com/FISH200516/ChatZen.git
     ```
 2.  **在 Android Studio 中打开**:
     - 确保使用较新版本的 Android Studio。
