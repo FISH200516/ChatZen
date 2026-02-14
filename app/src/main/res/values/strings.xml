@@ -1,0 +1,171 @@
+<resources>
+    <string name="app_name">ChatZen</string>
+    
+    <!-- Common -->
+    <string name="cancel">取消</string>
+    <string name="confirm">确认</string>
+    <string name="add">添加</string>
+    <string name="delete">删除</string>
+    <string name="save">保存</string>
+    <string name="back">返回</string>
+    <string name="settings">设置</string>
+    <string name="unknown">未知</string>
+    <string name="loading">加载中...</string>
+    <string name="copy">复制</string>
+    <string name="retry">重试</string>
+
+    <!-- Chat Screen -->
+    <string name="chat_title">对话</string>
+    <string name="input_placeholder">输入消息...</string>
+    <string name="send_message">发送消息</string>
+    <string name="stop_generation">停止生成</string>
+    <string name="deep_thinking">深度思考</string>
+    <string name="deep_thinking_process">思考过程</string>
+    <string name="ai_assistant">AI 助手</string>
+    <string name="greeting_1">你好！今天想聊点什么？👋</string>
+    <string name="greeting_2">随时待命，请吩咐🤖</string>
+    <string name="greeting_3">欢迎回来，我的朋友✨</string>
+    <string name="greeting_4">让我们开始新的对话吧🚀</string>
+    <string name="greeting_5">有什么我可以帮你的吗💡</string>
+    <string name="greeting_6">今天也是充满灵感的一天🌟</string>
+    <string name="greeting_7">我在听，请告诉我你的想法👂</string>
+    <string name="no_api_key">您尚未配置 API Key，请前往设置配置以开始</string>
+    <string name="go_to_settings">前往设置</string>
+    <string name="new_chat">新对话</string>
+    <string name="expand">展开</string>
+    <string name="collapse">收起</string>
+    <string name="configure_key_prompt">配置 API Key 以开始对话</string>
+
+    <!-- Settings Screen -->
+    <string name="providers_title">服务提供商</string>
+    <string name="custom_provider_desc">添加自定义 OpenAI 兼容服务</string>
+    <string name="host_label">主机地址: %s</string>
+    <string name="path_label">API路径: %s</string>
+    <string name="api_compatibility">API 兼容性</string>
+    <string name="api_chat_standard">OpenAI Chat API (标准)</string>
+    <string name="api_responses_gpt5">OpenAI Responses API (GPT-5/o3)</string>
+    <string name="add_custom_provider">添加自定义服务商</string>
+    <string name="provider_name">名称</string>
+    <string name="base_url">Base URL</string>
+    <string name="api_key">API Key</string>
+    <string name="chat_endpoint">Chat Endpoint</string>
+    <string name="api_path">API Path</string>
+    <string name="api_path_hint_gpt5">如果使用 GPT-5 或 o3 等新模型遇到无响应问题，请尝试使用 /responses</string>
+    <string name="delete_provider_title">删除自定义服务商</string>
+    <string name="delete_provider_message">确定要删除这个自定义服务商吗？</string>
+    <string name="configure_api_key">配置 API Key</string>
+    <string name="enter_api_key">输入 API Key</string>
+    <string name="get_api_key">获取 API Key</string>
+    <string name="model_list">模型列表</string>
+    <string name="fetch_failed">获取失败: %s</string>
+    <string name="fetch_models">获取模型</string>
+    <string name="refresh_models">刷新模型列表</string>
+    <string name="supports_deep_thinking">支持深度思考</string>
+
+    <string name="add_custom_provider_hint">点击右下角按钮添加自定义服务商</string>
+    <string name="host_hint">API 主机 (如 https://api.openai.com/v1)</string>
+    <string name="verifying_and_fetching">验证并获取模型...</string>
+    <string name="save_and_fetch">保存并获取模型</string>
+    <string name="test_all">全部测试</string>
+    <string name="no_models_found">暂无可用模型，请检查 API Key 或网络连接</string>
+    <string name="available_models">可用模型 (%d)</string>
+    
+    <!-- Usage Screen -->
+    <string name="usage_stats">用量统计</string>
+    <string name="current_stat_model">当前统计模型: %s</string>
+    <string name="total_consumption">总请求数: %s 次</string>
+    <string name="total_requests">总请求数</string>
+    <string name="total_tokens">总 Token 数: %s</string>
+    
+    <string name="model_distribution">模型请求占比</string>
+    <string name="no_distribution_data">暂无模型分布数据</string>
+    <string name="no_data">暂无数据</string>
+    <string name="total">总计</string>
+
+    <string name="chart_hour_suffix">%d点</string>
+    <string name="chart_week_format">第%d周</string>
+    <string name="chart_month_suffix">%d月</string>
+    
+    <string name="weekday_mon">周一</string>
+    <string name="weekday_tue">周二</string>
+    <string name="weekday_wed">周三</string>
+    <string name="weekday_thu">周四</string>
+    <string name="weekday_fri">周五</string>
+    <string name="weekday_sat">周六</string>
+    <string name="weekday_sun">周日</string>
+
+    <string name="filter_day">日</string>
+    <string name="filter_week">周</string>
+    <string name="filter_month">月</string>
+    <string name="filter_year">年</string>
+
+    <!-- Web Search -->
+    <string name="web_search">联网搜索</string>
+    <string name="select_service_provider">选择服务提供商</string>
+    <string name="select_web_search_service">选择联网搜索服务</string>
+    <string name="search_provider_bytedance">字节搜索</string>
+    <string name="search_provider_baidu">百度搜索</string>
+    <string name="search_provider_bing">Bing 搜索</string>
+    <string name="search_provider_tavily">Tavily</string>
+    <string name="search_provider_none">关闭</string>
+    <string name="web_search_settings">联网搜索设置</string>
+    <string name="secret_key">Secret Key</string>
+    <string name="enter_secret_key">输入 Secret Key</string>
+    <string name="web_search_config">配置联网搜索</string>
+    <string name="searching_web">正在联网搜索...</string>
+    <string name="web_search_results">已参考的搜索结果</string>
+
+    <!-- Navigation & Common -->
+    <string name="screen_chat">对话</string>
+    <string name="screen_usage">用量</string>
+    <string name="screen_settings">设置</string>
+    <string name="action_type">输入</string>
+    
+    <!-- Model Selector -->
+    <string name="select_model">选择模型</string>
+    <string name="no_models_configure">暂无可用模型，请在设置中配置 API Key。</string>
+    <string name="custom_provider_default_name">自定义服务商</string>
+    <string name="selected">已选择</string>
+
+    <!-- Model Types -->
+    <string name="model_type_chat">对话</string>
+    <string name="model_type_reasoning">推理</string>
+    <string name="model_type_code">代码</string>
+
+    <!-- Providers -->
+    <string name="provider_openai">OpenAI</string>
+    <string name="provider_claude">Claude</string>
+    <string name="provider_gemini">Gemini</string>
+    <string name="provider_deepseek">DeepSeek</string>
+    <string name="provider_siliconflow">硅基流动</string>
+    <string name="provider_volcengine">火山引擎</string>
+    <string name="provider_mimo">Xiaomi</string>
+    <string name="provider_minimax">MiniMax</string>
+    <string name="provider_zhipu">智谱 AI</string>
+    <string name="provider_aliyun">阿里云百炼</string>
+    <string name="provider_moonshot">Kimi</string>
+    <string name="provider_nvidia">NVIDIA</string>
+    <string name="provider_grok">Grok</string>
+    <string name="provider_custom">自定义</string>
+    
+    <!-- Favorites -->
+    <string name="favorite_models">收藏模型</string>
+    <string name="no_favorites">暂无收藏</string>
+
+    <!-- Chat Screen & Image Upload -->
+    <string name="image_upload">图片上传</string>
+    <string name="remove_image">移除图片</string>
+    <string name="image_analysis_process">图片分析过程</string>
+    <string name="analyzing_image">正在识别图片</string>
+
+    <!-- AI Personality / Model Settings -->
+    <string name="ai_personality">AI个性</string>
+    <string name="model_settings_title">模型参数设置</string>
+    <string name="system_prompt_label">系统提示词 (Role)</string>
+    <string name="system_prompt_hint">例如：你是一个乐于助人的助手...</string>
+    <string name="temperature_label">创造力 (Temperature)</string>
+    <string name="top_p_label">多样性 (Top P)</string>
+    <string name="reset_default">恢复默认</string>
+    <string name="close">关闭</string>
+    <string name="value_format">%.1f</string>
+</resources>
