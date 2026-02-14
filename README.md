@@ -37,7 +37,7 @@ ChatZen integrates with a wide range of official and third-party API providers:
   - **MiniMax**
   - **01.AI** (Yi Series via SiliconFlow)
   - **ByteDance** (Doubao via Volcengine)
-- **Aggregators**: SiliconFlow, OpenClaw.
+- **Aggregators**: SiliconFlow.
 - **Custom**: Support for any OpenAI-compatible API (e.g., local LLMs via Ollama).
 
 ### 🛠️ Tech Stack
@@ -103,7 +103,7 @@ ChatZen 集成了广泛的官方和第三方 API 服务：
   - **MiniMax** (海螺)
   - **零一万物** (Yi 系列，通过 SiliconFlow)
   - **火山引擎** (豆包 Doubao)
-- **聚合平台**: SiliconFlow (硅基流动), OpenClaw.
+- **聚合平台**: SiliconFlow (硅基流动).
 - **自定义**: 支持任何 OpenAI 兼容的 API (例如通过 Ollama 部署的本地大模型)。
 
 ### 🛠️ 技术栈
