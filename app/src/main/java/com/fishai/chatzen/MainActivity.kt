@@ -13,6 +13,7 @@ import com.fishai.chatzen.data.repository.ChatRepository
 import com.fishai.chatzen.data.repository.SettingsRepository
 import com.fishai.chatzen.data.repository.UsageRepository
 import com.fishai.chatzen.data.repository.WebSearchRepository
+import com.fishai.chatzen.manager.ChatGenerationManager
 import com.fishai.chatzen.ui.navigation.ChatZenApp
 import com.fishai.chatzen.ui.screens.ChatViewModel
 import com.fishai.chatzen.ui.screens.ChatViewModelFactory
@@ -43,6 +44,12 @@ class MainActivity : ComponentActivity() {
         val chatHistoryRepository = ChatHistoryRepository(database.chatDao(), imageStorageManager)
         val chatRepository = ChatRepository(settingsRepository, usageRepository)
         val webSearchRepository = WebSearchRepository(settingsRepository)
+        val chatGenerationManager = ChatGenerationManager(
+            application,
+            chatRepository,
+            webSearchRepository,
+            chatHistoryRepository
+        )
 
         val settingsViewModel = ViewModelProvider(
             this,
@@ -51,7 +58,7 @@ class MainActivity : ComponentActivity() {
 
         val chatViewModel = ViewModelProvider(
             this,
-            ChatViewModelFactory(chatRepository, settingsRepository, webSearchRepository, chatHistoryRepository)
+            ChatViewModelFactory(chatRepository, settingsRepository, webSearchRepository, chatHistoryRepository, application, chatGenerationManager)
         )[ChatViewModel::class.java]
         
         val usageViewModel = ViewModelProvider(

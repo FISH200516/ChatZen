@@ -1,5 +1,8 @@
 package com.fishai.chatzen.ui.screens
 
+import android.content.Intent
+import android.os.Build
+import android.provider.Settings
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -11,15 +14,16 @@ import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Language
 import com.fishai.chatzen.R
@@ -95,6 +99,9 @@ fun SettingsScreen(
                         icon = Icons.Default.Language,
                         onClick = onNavigateToOpenClawSettings
                     )
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        NotificationSettingsItem()
+                    }
                 }
             }
 
@@ -155,4 +162,23 @@ fun SettingsItem(title: String, icon: ImageVector, onClick: () -> Unit) {
         Spacer(modifier = Modifier.weight(1f))
         Icon(Icons.Default.ArrowForward, contentDescription = null)
     }
+}
+
+@Composable
+fun NotificationSettingsItem() {
+    val context = LocalContext.current
+    SettingsItem(
+        title = stringResource(R.string.notification_permission_title),
+        icon = Icons.Default.Notifications,
+        onClick = {
+            try {
+                val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                    putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                }
+                context.startActivity(intent)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    )
 }

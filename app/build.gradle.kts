@@ -16,8 +16,8 @@ android {
         applicationId = "com.fishai.chatzen"
         minSdk = 33
         targetSdk = 36
-        versionCode = 2
-        versionName = "1.1.0beta"
+        versionCode = 3
+        versionName = "1.2.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -49,6 +49,7 @@ tasks.withType<KotlinCompile>().configureEach {
 
 dependencies {
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.core)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))
@@ -78,6 +79,9 @@ dependencies {
     // Markdown Renderer
     implementation(libs.markdown.renderer.m3)
     implementation(libs.jlatexmath.android)
+
+    // Accompanist Permissions
+    implementation(libs.accompanist.permissions)
 
     // Coil for image loading
     implementation("io.coil-kt:coil-compose:2.6.0")

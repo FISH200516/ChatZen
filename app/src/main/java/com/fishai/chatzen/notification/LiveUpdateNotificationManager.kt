@@ -39,28 +39,30 @@ object LiveUpdateNotificationManager {
 
     @RequiresApi(Build.VERSION_CODES.O)
     fun initialize(context: Context, notifManager: NotificationManager) {
-        notificationManager = notifManager
-        appContext = context.applicationContext
-        
-        val channel = NotificationChannel(
-            CHANNEL_ID,
-            CHANNEL_NAME,
-            IMPORTANCE_DEFAULT
-        ).apply {
-            description = "AI对话生成进度通知"
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            notificationManager = notifManager
+            appContext = context.applicationContext
+            
+            val channel = NotificationChannel(
+                CHANNEL_ID,
+                CHANNEL_NAME,
+                IMPORTANCE_DEFAULT
+            ).apply {
+                description = "AI对话生成进度通知"
+            }
+            notificationManager.createNotificationChannel(channel)
+            
+            Log.d(TAG, "Live Update Notification Manager initialized")
         }
-        notificationManager.createNotificationChannel(channel)
-        
-        Log.d(TAG, "Live Update Notification Manager initialized")
     }
 
     fun isLiveUpdatesSupported(): Boolean {
-        return Build.VERSION.SDK_INT >= 35
+        return Build.VERSION.SDK_INT >= 36
     }
 
-    @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+    @RequiresApi(36)
     fun canPostPromotedNotifications(): Boolean {
-        return if (Build.VERSION.SDK_INT >= 35) {
+        return if (Build.VERSION.SDK_INT >= 36) {
             try {
                 notificationManager.canPostPromotedNotifications()
             } catch (e: NoSuchMethodError) {
@@ -77,7 +79,7 @@ object LiveUpdateNotificationManager {
         currentContentPreview = ""
         currentModelName = modelName
         currentUserQuestion = userQuestion
-        if (Build.VERSION.SDK_INT >= 35) {
+        if (Build.VERSION.SDK_INT >= 36) {
             updateLiveUpdateNotification(ChatGenerationState.THINKING)
         } else {
             updateLegacyNotification(ChatGenerationState.THINKING)
@@ -88,7 +90,7 @@ object LiveUpdateNotificationManager {
         if (state != currentState || contentPreview.isNotEmpty()) {
             currentState = state
             currentContentPreview = contentPreview
-            if (Build.VERSION.SDK_INT >= 35) {
+            if (Build.VERSION.SDK_INT >= 36) {
                 updateLiveUpdateNotification(state, contentPreview)
             } else {
                 updateLegacyNotification(state, contentPreview)
@@ -100,7 +102,7 @@ object LiveUpdateNotificationManager {
         currentState = ChatGenerationState.COMPLETED
         val contentText = if (summary.isNotEmpty()) summary else appContext.getString(R.string.notification_completed_content)
         
-        if (Build.VERSION.SDK_INT >= 35) {
+        if (Build.VERSION.SDK_INT >= 36) {
             val notification = buildLiveUpdateNotification(ChatGenerationState.COMPLETED, contentText)
             notificationManager.notify(NOTIFICATION_ID, notification)
         } else {
@@ -118,7 +120,7 @@ object LiveUpdateNotificationManager {
     }
 
     fun getNotificationForService(state: ChatGenerationState, contentPreview: String = ""): android.app.Notification {
-        return if (Build.VERSION.SDK_INT >= 35) {
+        return if (Build.VERSION.SDK_INT >= 36) {
             buildLiveUpdateNotification(state, contentPreview)
         } else {
             buildLegacyNotification(state, contentPreview)
@@ -138,7 +140,7 @@ object LiveUpdateNotificationManager {
         notificationManager.notify(NOTIFICATION_ID, notification)
     }
 
-    @RequiresApi(35)
+    @RequiresApi(36)
     private fun updateLiveUpdateNotification(state: ChatGenerationState, contentPreview: String = "") {
         val notification = buildLiveUpdateNotification(state, contentPreview)
         notificationManager.notify(NOTIFICATION_ID, notification)
@@ -167,7 +169,7 @@ object LiveUpdateNotificationManager {
             .build()
     }
 
-    @RequiresApi(35)
+    @RequiresApi(36)
     private fun buildLiveUpdateNotification(state: ChatGenerationState, contentPreview: String): android.app.Notification {
         val intent = Intent(appContext, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
@@ -196,7 +198,7 @@ object LiveUpdateNotificationManager {
         return builder.build()
     }
 
-    @RequiresApi(35)
+    @RequiresApi(36)
     private fun buildProgressStyle(state: ChatGenerationState, progress: Int): NotificationCompat.ProgressStyle {
         val pointColor = Color.valueOf(
             103f / 255f,

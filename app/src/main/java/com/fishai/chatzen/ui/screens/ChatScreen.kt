@@ -346,6 +346,7 @@ fun ChatScreen(
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
                         )
+                        
                         if (!uiState.hasConfiguredApiKey) {
                             Spacer(modifier = Modifier.height(16.dp))
                             Text(
@@ -1070,11 +1071,6 @@ fun ChatScreen(
         }
     }
 }
-
-
-
-
-
 
 
 

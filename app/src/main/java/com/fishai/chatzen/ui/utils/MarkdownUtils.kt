@@ -58,6 +58,14 @@ fun splitMarkdownContent(content: String): List<ContentSegment> {
                     start = i + 2
                     state = STATE_MATH_DOLLAR
                     i += 2
+                } else if (content.startsWith("\n\n", i)) {
+                    // Split text segment on double newline to allow incremental rendering of paragraphs
+                    if (i >= start) {
+                        // Include the newlines in the segment so UI knows to add spacing
+                        segments.add(ContentSegment.Text(content.substring(start, i + 2)))
+                    }
+                    i += 2
+                    start = i
                 } else {
                     i++
                 }
@@ -139,7 +147,33 @@ fun hasMarkdownSyntax(content: String): Boolean {
     
     // Inline Math
     if (content.contains(Regex("(?<!\\\\)\\$"))) return true
+    
+    // Check for Block Markdown (Headers, Lists, Quotes, Tables) which usually cause layout shifts
+    if (hasBlockMarkdownSyntax(content)) return true
 
+    return false
+}
+
+fun hasBlockMarkdownSyntax(content: String): Boolean {
+    // Code blocks
+    if (content.contains("```")) return true
+    
+    // Headers (at start of line)
+    if (content.contains(Regex("(?m)^#{1,6}\\s"))) return true
+    
+    // Lists (at start of line)
+    if (content.contains(Regex("(?m)^[\\*\\-\\+]\\s"))) return true
+    if (content.contains(Regex("(?m)^\\d+\\.\\s"))) return true
+    
+    // Quotes
+    if (content.contains(Regex("(?m)^>\\s"))) return true
+    
+    // Tables
+    if (content.contains("|") && content.contains(Regex("(?m)^\\|.*\\|$"))) return true
+    
+    // Math Block
+    if (content.contains("\\[") || content.contains("$$")) return true
+    
     return false
 }
 

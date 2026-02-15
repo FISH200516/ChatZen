@@ -168,4 +168,25 @@
     <string name="reset_default">恢复默认</string>
     <string name="close">关闭</string>
     <string name="value_format">%.1f</string>
+
+    <!-- Live Updates Notification -->
+    <string name="notification_thinking_title">正在思考</string>
+    <string name="notification_thinking_content">正在思考您的问题...</string>
+    <string name="notification_thinking_short">思考中</string>
+    <string name="notification_generating_title">正在深度思考中</string>
+    <string name="notification_generating_content">AI 正在组织语言...</string>
+    <string name="notification_generating_short">生成中</string>
+    <string name="notification_streaming_title">正在回答中</string>
+    <string name="notification_streaming_content">AI 正在回复中...</string>
+    <string name="notification_streaming_short">输出中</string>
+    <string name="notification_completed_title">回复完成</string>
+    <string name="notification_completed_content">点击查看完整回复</string>
+    <string name="notification_completed_short">已完成</string>
+    <string name="notification_permission_title">通知权限</string>
+    <string name="notification_permission_message">需要通知权限以显示对话进度</string>
+    <string name="notification_permission_rationale">通知权限用于在后台显示 AI 对话生成进度</string>
+    <string name="notification_permission_grant">授予权限</string>
+    <string name="live_updates_permission_title">实时更新通知</string>
+    <string name="live_updates_permission_message">启用实时更新通知可在通知栏显示对话进度</string>
+    <string name="open_settings">打开设置</string>
 </resources>

@@ -286,9 +286,6 @@ fun ChatBubble(
         
                                 segments.forEachIndexed { index, segment ->
                                     androidx.compose.runtime.key(index) {
-                                        val isLastSegment = index == segments.lastIndex
-                                        val isStreamingActiveSegment = isLastSegment && isStreaming
-                                        
                                         when (segment) {
                                             is ContentSegment.Text -> {
                                                 val contentToRenderFull = segment.content
@@ -312,7 +309,15 @@ fun ChatBubble(
                                                     // 目前 parseInlineMath 只处理了公式，其他文本作为普通文本。
                                                     // 这是一个权衡：为了支持公式，可能牺牲部分 Markdown 样式，除非我们在 parseInlineMath 里也解析 Markdown。
                                                     
-                                                    if (hasInlineMath) {
+                                                    val hasBlockMarkdown = remember(contentToRender) { com.fishai.chatzen.ui.utils.hasBlockMarkdownSyntax(contentToRender) }
+                                                    val isLastSegment = index == segments.lastIndex
+                                                    
+                                                    // 强制在流式输出的最后一段使用简单渲染（纯文本），
+                                                    // 避免因为不完整的 Markdown 语法（如未闭合的 ** 或 *）导致布局频繁跳变和闪烁。
+                                                    // 只有当段落完全生成并换行后，才会进行 Markdown 渲染。
+                                                    val useSimpleRendering = isLastSegment && isStreaming
+
+                                                    if (!useSimpleRendering && hasInlineMath && !hasBlockMarkdown) {
                                                         // 尝试使用 InlineTextContent 渲染
                                                         val inlineContent = remember(contentToRender, baseTextStyle.fontSize, textColor) {
                                                             parseInlineMath(contentToRender, baseTextStyle.fontSize, textColor, density)
@@ -324,7 +329,7 @@ fun ChatBubble(
                                                             style = baseTextStyle,
                                                             modifier = if (isUser) Modifier else Modifier.fillMaxWidth()
                                                         )
-                                                    } else if (isStreamingActiveSegment || !hasMarkdown) {
+                                                    } else if (!hasMarkdown || useSimpleRendering) {
                                                         Text(
                                                             text = contentToRender,
                                                             modifier = if (isUser) Modifier else Modifier.fillMaxWidth(),
@@ -458,7 +463,6 @@ fun LoadingIndicatorBubble() {
     val backgroundColor = MaterialTheme.colorScheme.secondaryContainer
     val textColor = MaterialTheme.colorScheme.onSecondaryContainer
     
-    // Fixed shape logic for loading bubble
     val bubbleShape = RoundedCornerShape(
         topStart = 16.dp, topEnd = 16.dp,
         bottomStart = 4.dp, bottomEnd = 16.dp
@@ -469,10 +473,9 @@ fun LoadingIndicatorBubble() {
         horizontalArrangement = Arrangement.Start,
         verticalAlignment = Alignment.Bottom
     ) {
-         // AI Avatar placeholder for loading
          ChatAvatar(
             role = Role.ASSISTANT,
-            modelName = "AI", // Or just generic
+            modelName = "AI",
             modifier = Modifier.padding(end = 8.dp, bottom = 4.dp)
         )
 
@@ -481,24 +484,14 @@ fun LoadingIndicatorBubble() {
                 .widthIn(max = LocalConfiguration.current.screenWidthDp.dp * 0.70f)
                 .clip(bubbleShape)
                 .background(backgroundColor)
-                .padding(12.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
             horizontalAlignment = Alignment.Start
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(16.dp),
-                    strokeWidth = 2.dp,
-                    color = textColor
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = stringResource(R.string.loading),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = textColor
-                )
-            }
+            TypingIndicator(
+                dotColor = textColor.copy(alpha = 0.6f),
+                dotSize = 8.dp,
+                range = 10.dp
+            )
         }
     }
 }

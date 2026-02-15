@@ -31,6 +31,16 @@ fun AboutScreen(
 ) {
     val changeLogs = listOf(
         ChangeLogItem(
+            version = "1.2.0",
+            date = "2026-02-15",
+            changes = listOf(
+                "新增 Android 实时更新通知 (Live Updates) 支持",
+                "新增 后台生成服务，支持应用后台持续对话",
+                "优化 通知栏显示体验，支持实时预览生成内容",
+                "优化 聊天生成状态管理与反馈"
+            )
+        ),
+        ChangeLogItem(
             version = "1.1.0beta",
             date = "2026-02-14",
             changes = listOf(

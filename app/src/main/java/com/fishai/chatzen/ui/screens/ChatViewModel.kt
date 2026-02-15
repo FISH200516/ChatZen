@@ -1,5 +1,9 @@
 package com.fishai.chatzen.ui.screens
 
+import android.app.Application
+import android.app.NotificationManager
+import android.content.Context
+import android.os.Build
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -11,6 +15,8 @@ import com.fishai.chatzen.data.repository.ChatHistoryRepository
 import com.fishai.chatzen.data.repository.ChatRepository
 import com.fishai.chatzen.data.repository.SettingsRepository
 import com.fishai.chatzen.data.repository.WebSearchRepository
+import com.fishai.chatzen.notification.ChatGenerationState
+import com.fishai.chatzen.notification.LiveUpdateNotificationManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -23,6 +29,9 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 import com.fishai.chatzen.data.model.WebSearchResult
+import com.fishai.chatzen.manager.ChatGenerationManager
+import com.fishai.chatzen.manager.GenerationConfig
+import com.fishai.chatzen.manager.GenerationState
 
 data class ChatUiState(
     val messages: List<ChatMessage> = emptyList(),
@@ -51,12 +60,153 @@ class ChatViewModel(
     private val chatRepository: ChatRepository,
     private val settingsRepository: SettingsRepository,
     private val webSearchRepository: WebSearchRepository,
-    private val chatHistoryRepository: ChatHistoryRepository
+    private val chatHistoryRepository: ChatHistoryRepository,
+    private val application: Application,
+    private val chatGenerationManager: ChatGenerationManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ChatUiState())
-    private var currentGenerationJob: kotlinx.coroutines.Job? = null
+    // removed currentGenerationJob
     
+    init {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val notificationManager = application.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            LiveUpdateNotificationManager.initialize(application, notificationManager)
+        }
+        
+        // Subscribe to generation updates
+        viewModelScope.launch {
+            chatGenerationManager.generationState.collect { state ->
+                handleGenerationUpdate(state)
+            }
+        }
+    }
+    
+    // ... (rest of init) ...
+
+    private fun handleGenerationUpdate(state: GenerationState) {
+        val messageId = state.messageId ?: return
+        
+        _uiState.update { ui ->
+            var messages = ui.messages
+            val existingMessage = messages.find { it.id == messageId }
+            
+            if (existingMessage != null) {
+                // Update existing
+                messages = messages.map { msg ->
+                    if (msg.id == messageId) {
+                        msg.copy(
+                            content = state.content,
+                            reasoningContent = state.reasoningContent,
+                            isSearching = state.isSearching,
+                            isOcr = state.isOcr,
+                            ocrContent = state.ocrContent,
+                            searchResults = state.searchResults
+                        )
+                    } else msg
+                }
+            } else {
+                // Add new if it's a valid update (not just a completed empty state)
+                val hasContent = state.content.isNotEmpty() ||
+                        !state.reasoningContent.isNullOrBlank() ||
+                        state.isSearching ||
+                        state.isOcr ||
+                        !state.ocrContent.isNullOrBlank() ||
+                        !state.searchResults.isNullOrEmpty()
+
+                if (hasContent) {
+                    val newMessage = ChatMessage(
+                        id = messageId,
+                        role = Role.ASSISTANT,
+                        content = state.content,
+                        reasoningContent = state.reasoningContent,
+                        isSearching = state.isSearching,
+                        isOcr = state.isOcr,
+                        ocrContent = state.ocrContent,
+                        searchResults = state.searchResults,
+                        modelName = ui.currentModel?.name
+                    )
+                    messages = messages + newMessage
+                }
+            }
+            
+            ui.copy(
+                messages = messages,
+                isLoading = state.status != ChatGenerationState.COMPLETED,
+                error = state.error
+            )
+        }
+        
+        if (state.error != null) {
+             val errorMessage = ChatMessage(role = Role.SYSTEM, content = "系统提示: ${state.error}")
+             _uiState.update { it.copy(messages = it.messages + errorMessage) }
+        }
+    }
+
+
+
+    // ...
+
+    fun sendMessage(content: String) {
+        if (content.isBlank()) return
+        val currentState = uiState.value
+        val model = currentState.currentModel ?: return
+        
+        // 1. Prepare User Message
+        val quotedContent = currentState.quotedMessage
+        val currentImages = currentState.selectedImages.ifEmpty { null }
+        
+        val userMessage = ChatMessage(
+            role = Role.USER, 
+            content = content, 
+            quotedContent = quotedContent, 
+            images = currentImages
+        )
+        
+        // 2. Update UI immediately
+        _uiState.update { 
+            it.copy(
+                messages = it.messages + userMessage,
+                isLoading = true,
+                error = null,
+                selectedImages = emptyList(),
+                quotedMessage = null,
+                isInputExpanded = false
+            )
+        }
+
+        // Save user message
+        viewModelScope.launch {
+            chatHistoryRepository.saveMessage(userMessage)
+        }
+
+        // 3. Start Generation via Manager
+        val config = GenerationConfig(
+            temperature = currentState.temperature,
+            topP = currentState.topP,
+            systemPrompt = currentState.systemPrompt,
+            isWebSearchEnabled = currentState.isWebSearchEnabled,
+            ocrModel = currentState.ocrModel
+        )
+        
+        // Pass history (all current messages excluding the one we just added? 
+        // No, we just added it to UI.
+        // We should pass the *previous* messages.
+        // `currentState.messages` is the state *before* we added the new user message.
+        // So `currentState.messages` is the history.
+        // Wait, `_uiState.update` happens before.
+        // `val currentState = uiState.value` happens at the top.
+        // So `currentState.messages` DOES NOT include the new user message.
+        // Perfect.
+        
+        chatGenerationManager.startGeneration(
+            userMessage = userMessage,
+            contextMessages = currentState.messages,
+            model = model,
+            config = config
+        )
+    }
+
     // Combine local state with available models from settings
     val uiState: StateFlow<ChatUiState> = combine(
         _uiState,
@@ -197,11 +347,9 @@ class ChatViewModel(
     }
 
     fun stopGeneration() {
-        currentGenerationJob?.cancel()
-        currentGenerationJob = null
+        chatGenerationManager.stopGeneration()
         _uiState.update { it.copy(isLoading = false) }
-        // 添加一个“对话取消”的系统提示（可选，或者直接在UI上显示状态）
-        // 这里根据需求，添加一条取消的提示消息
+        
         val cancelMessage = ChatMessage(
             role = Role.SYSTEM, 
             content = "对话取消",
@@ -304,320 +452,7 @@ class ChatViewModel(
         }
     }
 
-    fun sendMessage(content: String) {
-        if (content.isBlank()) return
-        val currentState = uiState.value
-        val model = currentState.currentModel ?: return
-        
-        // 1. Prepare User Message
-        // Handle quoted message
-        val quotedContent = currentState.quotedMessage
-        
-        // Construct prompt with quote for API/Search context, but keep them separate in ChatMessage object
-        val finalContent = if (quotedContent != null) {
-            "> $quotedContent\n\n$content"
-        } else {
-            content
-        }
-        
-        // Clear quoted message state
-        clearQuotedMessage()
-        
-        val currentImages = currentState.selectedImages.ifEmpty { null }
-        val userMessage = ChatMessage(
-            role = Role.USER, 
-            content = content, // Store only user input in content
-            quotedContent = quotedContent, // Store quote separately
-            images = currentImages
-        )
-        
-        // 2. Update UI immediately
-        _uiState.update { 
-            it.copy(
-                messages = it.messages + userMessage,
-                isLoading = true,
-                error = null,
-                selectedImages = emptyList(), // Clear images after sending
-                quotedMessage = null,
-                isInputExpanded = false
-            )
-        }
 
-        currentGenerationJob = viewModelScope.launch {
-            // Save user message
-            chatHistoryRepository.saveMessage(userMessage)
-
-            var promptToSend = finalContent
-            var assistantMessageId: String? = null
-            
-            // OCR Logic Interception
-            // Only trigger if:
-            // 1. Model does NOT support vision
-            // 2. OCR model is configured
-            // 3. There are images to process
-            if (model.supportsVision == false && currentState.ocrModel != null && userMessage.images != null && userMessage.images.isNotEmpty()) {
-                val ocrModel = currentState.ocrModel
-                
-                // Create assistant message for OCR status
-                val tempId = java.util.UUID.randomUUID().toString()
-                assistantMessageId = tempId
-                val assistantMessage = ChatMessage(
-                    id = tempId,
-                    role = Role.ASSISTANT,
-                    content = "", // Empty content initially
-                    isSearching = true, 
-                    isOcr = true
-                )
-                _uiState.update { it.copy(messages = it.messages + assistantMessage) }
-                
-                try {
-                    val ocrMessage = ChatMessage(
-                        role = Role.USER,
-                        content = "请详细描述这张图片的内容。如果图片中包含文字，请将文字完整转录出来。",
-                        images = userMessage.images
-                    )
-                    
-                    var ocrFullContent = ""
-                    
-                    // Stream OCR Response
-                    chatRepository.sendMessageStream(listOf(ocrMessage), ocrModel).collect { chunk ->
-                        ocrFullContent += chunk.content
-                        _uiState.update { state ->
-                            state.copy(messages = state.messages.map { msg ->
-                                if (msg.id == assistantMessageId) {
-                                    msg.copy(ocrContent = ocrFullContent)
-                                } else msg
-                            })
-                        }
-                    }
-                    
-                    // Update prompt with OCR result
-                    promptToSend = "[图片视觉分析结果]:\n$ocrFullContent\n\n用户问题: $finalContent"
-                    
-                    // Mark OCR as finished in UI state (update isOcr=false, isSearching=true for next step)
-                    _uiState.update { state ->
-                        state.copy(messages = state.messages.map { msg ->
-                            if (msg.id == assistantMessageId) {
-                                msg.copy(isOcr = false, isSearching = true) // Switch to searching/thinking state
-                            } else msg
-                        })
-                    }
-                    
-                } catch (e: Exception) {
-                     _uiState.update { it.copy(isLoading = false, error = "图片分析失败: ${e.message}") }
-                     // Remove placeholder or show error
-                     return@launch
-                }
-            }
-
-            try {
-                // Web Search Integration (Existing Logic)
-                if (uiState.value.isWebSearchEnabled) {
-                     // If we already have an assistantMessageId from OCR, we might need to handle this carefully.
-                     // But typically users won't use both simultaneously or we can chain them.
-                     // For now, let's assume if OCR is active, we skip Web Search or handle it sequentially.
-                     // If assistantMessageId is null (no OCR), we create one for search.
-                     
-                     if (assistantMessageId == null) {
-                         val tempId = java.util.UUID.randomUUID().toString()
-                         assistantMessageId = tempId
-                         val placeholderMsg = ChatMessage(
-                             id = tempId,
-                             role = Role.ASSISTANT,
-                             content = "",
-                             isSearching = true
-                         )
-                         _uiState.update { it.copy(messages = it.messages + placeholderMsg) }
-                         chatHistoryRepository.saveMessage(placeholderMsg)
-                     }
-                     
-                     // ... Web Search Logic ...
-                     try {
-                         val searchResults = webSearchRepository.search(finalContent)
-                         
-                         // Update placeholder with results
-                         _uiState.update { state ->
-                             state.copy(messages = state.messages.map { msg ->
-                                 if (msg.id == assistantMessageId) {
-                                     msg.copy(
-                                         isSearching = false,
-                                         searchResults = searchResults
-                                     )
-                                 } else msg
-                             })
-                         }
-                         
-                         // Save updated placeholder with results
-                         _uiState.value.messages.find { it.id == assistantMessageId }?.let {
-                             chatHistoryRepository.saveMessage(it)
-                         }
-
-                         if (searchResults.isNotEmpty()) {
-                             val sb = StringBuilder()
-                             sb.append("Current Date: ${java.time.LocalDate.now()}\n")
-                             // If promptToSend was already modified by OCR, we append to it? 
-                             // Or we wrap it?
-                             // Let's assume we append context to promptToSend.
-                             sb.append("User Query Context: $promptToSend\n") 
-                             sb.append("Web Search Results:\n")
-                             searchResults.forEachIndexed { index, result ->
-                                 sb.append("${index + 1}. Title: ${result.title}\n   URL: ${result.url}\n   Snippet: ${result.snippet}\n\n")
-                             }
-                             sb.append("Please answer the user's query based on the search results above.")
-                             promptToSend = sb.toString()
-                         }
-                     } catch (e: Exception) {
-                         e.printStackTrace()
-                         _uiState.update { state ->
-                             state.copy(messages = state.messages.map { msg ->
-                                 if (msg.id == assistantMessageId) msg.copy(isSearching = false) else msg
-                             })
-                         }
-                     }
-                }
-
-                // Stream response - Pass the original userMessage (with images) to be preserved in UI,
-                // but pass the modified promptToSend for the API request context logic
-                streamResponse(userMessage, promptToSend, assistantMessageId)
-
-            } catch (e: Exception) {
-                if (e !is kotlinx.coroutines.CancellationException) {
-                    handleSendError(e)
-                }
-            }
-        }
-    }
-
-    private suspend fun streamResponse(userMessage: ChatMessage, promptToSend: String, existingAssistantId: String?) {
-        val model = uiState.value.currentModel ?: return
-        var currentMessageId: String? = existingAssistantId
-        var fullContent = ""
-        var fullReasoningContent = ""
-        
-        // Limit context to last 3 rounds (6 messages) + System prompt if any
-        val messagesToSend = _uiState.value.messages.let { msgs ->
-            // Use configured system prompt if available, otherwise fallback to history system messages
-            val configuredSystemPrompt = _uiState.value.systemPrompt
-            val systemMessages = if (configuredSystemPrompt.isNotBlank()) {
-                listOf(ChatMessage(role = Role.SYSTEM, content = configuredSystemPrompt))
-            } else {
-                msgs.filter { it.role == Role.SYSTEM }
-            }
-            
-            // Filter out the placeholder assistant message if it exists
-            val relevantMsgs = msgs.filter { it.role != Role.SYSTEM && it.id != existingAssistantId }
-            val contextMessages = relevantMsgs.takeLast(6).toMutableList()
-            
-            // Replace the last message (which is the current user message) with the augmented prompt if modified
-            if (contextMessages.isNotEmpty() && contextMessages.last().id == userMessage.id) {
-                // IMPORTANT: If model does NOT support vision, we must strip images from the request
-                // Otherwise APIs like DeepSeek/SiliconFlow will return 400 Bad Request
-                // However, we should only strip them from the REQUEST, not from the displayed message history.
-                // The contextMessages list here is constructed specifically for the API request.
-                // But `userMessage` here is a reference to the message object that might be displayed in UI if we are not careful.
-                // Wait, `messagesToSend` is a new list, but `contextMessages` contains objects from `_uiState.value.messages`.
-                // We need to ensure we don't modify the object in the UI state by accident, but `copy()` does create a new object.
-                // The issue is: `streamResponse` uses `userMessage` passed as argument to find the message in `contextMessages`.
-                
-                val strippedImages = if (model.supportsVision == false) null else userMessage.images
-                // We use promptToSend as the content, which might include OCR results, Search results, or the quoted content.
-                // Since promptToSend already includes the quoted content (if any), we must set quotedContent to null 
-                // to prevent ChatRepository from appending it again.
-                contextMessages[contextMessages.lastIndex] = userMessage.copy(
-                    content = promptToSend, 
-                    quotedContent = null,
-                    images = strippedImages
-                )
-            }
-            
-            systemMessages + contextMessages
-        }
-
-        chatRepository.sendMessageStream(
-            messages = messagesToSend,
-            model = model,
-            temperature = _uiState.value.temperature.toDouble(),
-            topP = _uiState.value.topP.toDouble()
-        ).collect { chunk ->
-            fullContent += chunk.content
-            fullReasoningContent += chunk.reasoningContent
-            
-            if (currentMessageId == null) {
-                // First chunk, create message
-                val assistantMessage = ChatMessage(
-                    role = Role.ASSISTANT, 
-                    content = fullContent,
-                    reasoningContent = if (fullReasoningContent.isNotEmpty()) fullReasoningContent else null,
-                    modelName = model.name
-                )
-                currentMessageId = assistantMessage.id
-                _uiState.update { 
-                    it.copy(
-                        messages = it.messages + assistantMessage
-                    )
-                }
-            } else {
-                // Update existing message
-                _uiState.update { state ->
-                    val updatedMessages = state.messages.map { msg ->
-                        if (msg.id == currentMessageId) {
-                            msg.copy(
-                                content = fullContent,
-                                reasoningContent = if (fullReasoningContent.isNotEmpty()) fullReasoningContent else null,
-                                isSearching = false // Ensure false
-                            )
-                        } else {
-                            msg
-                        }
-                    }
-                    state.copy(
-                        messages = updatedMessages
-                    )
-                }
-            }
-        }
-        
-        // Save final assistant message
-        if (currentMessageId != null) {
-            val finalMsg = _uiState.value.messages.find { it.id == currentMessageId }
-            if (finalMsg != null) {
-                chatHistoryRepository.saveMessage(finalMsg)
-            }
-        }
-        
-        _uiState.update { it.copy(isLoading = false) }
-    }
-
-    private fun handleSendError(e: Exception) {
-        val rawErrorMsg = if (e is retrofit2.HttpException) {
-            val errorBody = e.response()?.errorBody()?.string()
-            if (errorBody != null) {
-                if (errorBody.contains("insufficient_quota") || 
-                    errorBody.contains("balance is insufficient") ||
-                    errorBody.contains("30001")) {
-                    "您的账户余额不足，请充值后重试。"
-                } else {
-                    "HTTP ${e.code()}: $errorBody"
-                }
-            } else {
-                "HTTP ${e.code()} ${e.message()}"
-            }
-        } else {
-            e.message ?: "未知错误 (${e.javaClass.simpleName})"
-        }
-        
-        _uiState.update { 
-            it.copy(
-                isLoading = false,
-                error = rawErrorMsg
-            )
-        }
-        val errorMessage = ChatMessage(role = Role.SYSTEM, content = "系统提示: $rawErrorMsg")
-        _uiState.update { it.copy(messages = it.messages + errorMessage) }
-    }
-    
-    // Legacy method removed or kept private if needed? 
-    // performSendMessage was merged into sendMessage
 
 
     fun selectModel(model: ModelInfo) {
@@ -637,12 +472,14 @@ class ChatViewModelFactory(
     private val chatRepository: ChatRepository,
     private val settingsRepository: SettingsRepository,
     private val webSearchRepository: WebSearchRepository,
-    private val chatHistoryRepository: ChatHistoryRepository
+    private val chatHistoryRepository: ChatHistoryRepository,
+    private val application: Application,
+    private val chatGenerationManager: ChatGenerationManager
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(ChatViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return ChatViewModel(chatRepository, settingsRepository, webSearchRepository, chatHistoryRepository) as T
+            return ChatViewModel(chatRepository, settingsRepository, webSearchRepository, chatHistoryRepository, application, chatGenerationManager) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }
